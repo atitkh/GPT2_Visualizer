@@ -443,9 +443,14 @@ if user_input:
 
     st.subheader("4. Text Generation")
 
-    st.write(f"** Take Layer_Output as input for next layer **")
-    input_ids = torch.cat([input_ids, output_layer.argmax(dim=-1)], dim=-1)
-    
+    st.write(f"**Take Layer_Output as input for next layer for generating Logits of the new word**")
+    # Get the output of the selected layer
+    st.write(f"**Logits Output:**")
+    st.latex(r'''
+                \text{Logits} = \text{Layer\_Output} \times W_{\text{logits}}
+                ''')
+    unembedded_output = torch.matmul(output_layer, model.transformer.wte.weight.T)
+    st.write(f"**Logits: Shape {unembedded_output.shape}**")
 
     num_tokens_to_generate = st.slider("Number of Tokens to Generate", 1, 50, 1)
     do_sample = st.checkbox("Use Sampling", value=False)
@@ -454,16 +459,24 @@ if user_input:
         temperature = st.slider("Temperature", 0.5, 1.5, 1.0)
         top_k = st.slider("Top-k", 0, 100, 50)
         top_p = st.slider("Top-p", 0.0, 1.0, 0.95)
+
+        generated_outputs = model.generate(
+        input_ids=input_ids,
+        attention_mask=inputs['attention_mask'],
+        max_length=input_ids.size(1) + num_tokens_to_generate,
+        do_sample=do_sample,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
+        num_return_sequences=1,
+        output_scores=True,
+        return_dict_in_generate=True,
+        pad_token_id=tokenizer.pad_token_id
+    )
     else:
         temperature = 1.0
         top_k = None
         top_p = None
-
-    st.write("""
-    In GPT-2, text generation involves predicting the next token based on the input sequence. The model computes logits (scores) for each token in the vocabulary and applies softmax to obtain probabilities.
-
-    Let's generate some tokens and see how the model predicts them.
-    """)
 
     generated_outputs = model.generate(
         input_ids=input_ids,
@@ -481,11 +494,6 @@ if user_input:
 
     generated_sequence = generated_outputs.sequences[0]
     generated_text = tokenizer.decode(generated_sequence, skip_special_tokens=True)
-
-    st.write("**Generated Text:**")
-    st.write(generated_text)
-
-    st.subheader("5. Next Token Probabilities for Generated Tokens")
 
     # Get the scores (logits) for each generated token
     scores = generated_outputs.scores  # List of tensors, each of shape (batch_size, vocab_size)
@@ -531,11 +539,10 @@ if user_input:
 
         st.plotly_chart(fig)
 
-        st.write("""
-        At this step, the model uses the previous tokens to predict the next token by computing the logits over the entire vocabulary. The probabilities are obtained by applying softmax to the logits.
-        """)
+    st.write("## **6. Generated Text**")
+    st.write(generated_text)
 
-    st.subheader("6. Processing Summary")
+    st.subheader("Summary")
 
     # Create a summary table
     pipeline_data = []
@@ -581,3 +588,12 @@ if user_input:
     pipeline_df = pd.DataFrame(pipeline_data)
 
     st.table(pipeline_df)
+
+# footer text
+st.markdown("""
+    <div style="text-align: center; margin-top: 50px; bottom: 0;">
+
+    <p><strong>Created by:</strong> <a href="https://www.github.com/atitkh" target="_blank">Atit Kharel</a></p>
+
+    </div>
+""", unsafe_allow_html=True)
