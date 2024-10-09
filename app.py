@@ -42,7 +42,7 @@ if user_input:
     input_ids = inputs['input_ids']
     tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
 
-    num_tokens_to_generate = st.slider("Number of Tokens to Generate", 1, 50, 1)
+    num_tokens_to_generate = st.slider("Number of Tokens to Generate", 1, 50, 4)
 
     with st.expander("View Tokens and Token IDs"):
         st.write("# **1. Tokenization**")
