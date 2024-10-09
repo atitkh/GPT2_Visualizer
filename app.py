@@ -165,7 +165,6 @@ if user_input:
         5. **Feed-Forward Neural Network (MLP)**: Applies non-linear transformations to each position separately.
         6. **Second Residual Connection**: Adds the MLP output back to the input of the MLP.
 
-        Let's explore these steps for the selected layer.
         """)
 
         # Get outputs with hidden states and attentions
@@ -198,7 +197,7 @@ if user_input:
         num_attention_heads = model.config.num_attention_heads  # Should be 12
         head_dim = hidden_size // num_attention_heads  # Should be 64
 
-        st.write(f"**State Before Layer {layer} Input:** Shape {hidden_states_prev.shape}")
+        st.write(f"**State Before Layer {layer} Input:** Shape {tuple(hidden_states_prev.shape)}")
         hidden_states_prev_df = pd.DataFrame(hidden_states_prev.detach().numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(hidden_states_prev_df.style.format("{:.4f}"))
 
@@ -215,14 +214,14 @@ if user_input:
             # Apply Layer Normalization
             hidden_states_norm = ln_1(hidden_states_prev.unsqueeze(0))[0]  # Shape: (seq_len, hidden_size)
 
-        st.write(f"**Layer-Normalized Output:** Shape {hidden_states_norm.shape}")
+        st.write(f"**Layer-Normalized Output:** Shape {tuple(hidden_states_norm.shape)}")
         st.latex(r''' \text{Layer-Normalized Output } H_{\text{norm}} = \gamma \odot \frac{Input - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta ''')
         hidden_states_norm_df = pd.DataFrame(hidden_states_norm.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(hidden_states_norm_df.style.format("{:.4f}"))
 
         ### **Step 2: Multi-Head Self-Attention**
 
-        st.write("## **Step 2: Multi-Head Self-Attention**")
+        st.write("## **Step 2: Multi-Head Self-Attention (12 Heads)**")
 
         with torch.no_grad():
             # The weight matrix for c_attn is (hidden_size, 3 * hidden_size)
@@ -247,19 +246,19 @@ if user_input:
             V_head = V[:, selected_head, :]
 
         # Display Q, K, V for the selected head
-        st.write(f"**Queries (Q) for Layer {layer}, Head {head}:** Shape {Q_head.shape}")
+        st.write(f"**Queries (Q) for Layer {layer}, Head {head}:** Shape {tuple(Q_head.shape)}")
         st.latex(r'''Q = H_{\text{norm}} \times W_Q + b_Q''')
 
         Q_df = pd.DataFrame(Q_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(Q_df.style.format("{:.4f}"))
 
-        st.write(f"**Keys (K) for Layer {layer}, Head {head}:** Shape {K_head.shape}")
+        st.write(f"**Keys (K) for Layer {layer}, Head {head}:** Shape {tuple(K_head.shape)}")
         st.latex(r'''K = H_{\text{norm}} \times W_K + b_K''')
 
         K_df = pd.DataFrame(K_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(K_df.style.format("{:.4f}"))
 
-        st.write(f"**Values (V) for Layer {layer}, Head {head}:** Shape {V_head.shape}")
+        st.write(f"**Values (V) for Layer {layer}, Head {head}:** Shape {tuple(V_head.shape)}")
         st.latex(r'''V = H_{\text{norm}} \times W_V + b_V''')
 
         V_df = pd.DataFrame(V_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
@@ -279,7 +278,7 @@ if user_input:
             attention_weights = attentions[layer - 1][0][head - 1].detach()  # Shape: (seq_len, seq_len)
 
         # Display attention scores and weights
-        st.write(f"**Attention Scores for Layer {layer}, Head {head}:** Shape {attention_scores.shape}")
+        st.write(f"**Attention Scores for Layer {layer}, Head {head}:** Shape {tuple(attention_scores.shape)}")
         attention_scores_df = pd.DataFrame(attention_scores.numpy(), index=token_labels, columns=token_labels)
         st.dataframe(attention_scores_df.style.format("{:.4f}"))
 
@@ -292,7 +291,7 @@ if user_input:
         attention_scores_masked_df = pd.DataFrame(attention_scores_masked.numpy(), index=token_labels, columns=token_labels)
         st.dataframe(attention_scores_masked_df.style.format("{:.4f}"))
 
-        st.write(f"**Attention Weights for Layer {layer}, Head {head}:** Shape {attention_weights.shape}")
+        st.write(f"**Attention Weights for Layer {layer}, Head {head}:** Shape {tuple(attention_weights.shape)}")
         st.latex(r'''\text{Attention\_Weights} = \text{softmax}(\text{Masked\_Attention\_Scores})''')
         attention_weights_df = pd.DataFrame(attention_weights.numpy(), index=token_labels, columns=token_labels)
         st.dataframe(attention_weights_df.style.format("{:.4f}"))
@@ -309,12 +308,13 @@ if user_input:
                 sns.heatmap(attentions[layer - 1][0][i].detach().numpy(), ax=ax, cmap="viridis", annot=True, fmt=".2f",
                             xticklabels=token_labels,
                             yticklabels=token_labels)
-                ax.set_title(f"Head {i+1}")
+                ax.set_title(f"Layer {layer}, Head {i+1}")
             st.pyplot(fig)
 
         else:
             fig, ax = plt.subplots()
             sns.heatmap(attention_weights.numpy(), xticklabels=token_labels, yticklabels=token_labels, cmap='viridis', ax=ax, annot=True)
+            ax.set_title(f"Layer {layer}, Head {head}")
             ax.set_xlabel("Key Tokens")
             ax.set_ylabel("Query Tokens")
             st.pyplot(fig)
@@ -336,7 +336,7 @@ if user_input:
         with torch.no_grad():
             attention_output_head = torch.matmul(attention_weights, V_head)  # Shape: (seq_len, head_dim)
 
-        st.write(f"**Attention Output for Layer {layer}, Head {head}:** Shape {attention_output_head.shape}")
+        st.write(f"**Attention Output for Layer {layer}, Head {head}:** Shape {tuple(attention_output_head.shape)}")
         attention_output_df = pd.DataFrame(attention_output_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(attention_output_df.style.format("{:.4f}"))
 
@@ -370,11 +370,11 @@ if user_input:
             # Linear projection
             attn_output = attn.c_proj(attention_output_concat)  # Shape: (seq_len, hidden_size)
 
-        st.write(f"**Concatenated Attention Output:** Shape {attention_output_concat.shape}")
+        st.write(f"**Concatenated Attention Output:** Shape {tuple(attention_output_concat.shape)}")
         st.latex(r''' \text{Attention\_Output\_Concat} = \text{Concatenate}(\text{Attention\_Output\_Head}_1, \ldots, \text{Attention\_Output\_Head}_{\text{num\_heads}}) ''')
         attention_output_concat_df = pd.DataFrame(attention_output_concat.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(attention_output_concat_df.style.format("{:.4f}"))
-        st.write(f"**Attention Output After Projection:** Shape {attn_output.shape}")
+        st.write(f"**Attention Output After Projection:** Shape {tuple(attn_output.shape)}")
         st.latex(r''' \text{Attention\_Output} = \text{Attention\_Output\_Concat} \times W_{\text{c\_proj\_1}} + b_{\text{c\_proj\_1}} ''')
         attn_output_df = pd.DataFrame(attn_output.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(attn_output_df.style.format("{:.4f}"))
@@ -387,7 +387,7 @@ if user_input:
             # Residual connection
             residual_1 = hidden_states_prev + attn_output  # Shape: (seq_len, hidden_size)
             
-        st.write(f"**Output After First Residual Connection:** Shape {residual_1.shape}")
+        st.write(f"**Output After First Residual Connection:** Shape {tuple(residual_1.shape)}")
         st.latex(r''' \text{Residual\_1} = \text{Attention\_Input} + \text{Attention\_Output} ''')
         residual_1_df = pd.DataFrame(residual_1.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(residual_1_df.style.format("{:.4f}"))
@@ -401,7 +401,7 @@ if user_input:
             # Layer normalization
             hidden_states_norm_2 = ln_2(residual_1.unsqueeze(0))[0]  # Shape: (seq_len, hidden_size)
 
-        st.write(f"**Layer-Normalized Output Before MLP:** Shape {hidden_states_norm_2.shape}")
+        st.write(f"**Layer-Normalized Output Before MLP:** Shape {tuple(hidden_states_norm_2.shape)}")
         st.latex(r''' Layer-Normalized Output H_{\text{norm}} = \gamma \odot \frac{\text{Residual\_1} - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta ''')
         hidden_states_norm_2_df = pd.DataFrame(hidden_states_norm_2.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(hidden_states_norm_2_df.style.format("{:.4f}"))
@@ -418,17 +418,17 @@ if user_input:
             # MLP output
             mlp_output = mlp(hidden_states_norm_2.unsqueeze(0))[0]  # Shape: (seq_len, hidden_size)
 
-        st.write(f"**First Linear Layer Output:** Shape {first_linear.shape}")
+        st.write(f"**First Linear Layer Output:** Shape {tuple(first_linear.shape)}")
         st.latex(r''' \text{First\_Linear} = H_{\text{norm}} \times W_{\text{c\_fc}} + b_{\text{c\_fc}} ''')
         first_linear_df = pd.DataFrame(first_linear.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(4 * hidden_size)])
         st.dataframe(first_linear_df.style.format("{:.4f}"))
 
-        st.write(f"**GELU Activation Output:** Shape {gelu_activation.shape}")
+        st.write(f"**GELU Activation Output:** Shape {tuple(gelu_activation.shape)}")
         st.latex(r''' GELU_{\text{fl}}= 0.5 \times (1 + \text{erf}(\frac{\text{First\_Linear}}{\sqrt{2}})) \times \text{First\_Linear}''')
         gelu_activation_df = pd.DataFrame(gelu_activation.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(4 * hidden_size)])
         st.dataframe(gelu_activation_df.style.format("{:.4f}"))
 
-        st.write(f"**MLP Output:** Shape {mlp_output.shape}")
+        st.write(f"**MLP Output:** Shape {tuple(mlp_output.shape)}")
         st.latex(r''' \text{MLP\_Output} = GELU_{\text{fl}} \times W_{\text{c\_proj\_2}} + b_{\text{c\_proj\_2}} ''')
         mlp_output_df = pd.DataFrame(mlp_output.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(mlp_output_df.style.format("{:.4f}"))
@@ -441,7 +441,7 @@ if user_input:
             # Second residual connection
             output_layer = residual_1 + mlp_output  # Shape: (seq_len, hidden_size)
 
-        st.write(f"**Output of Transformer Layer {layer}:** Shape {output_layer.shape}")
+        st.write(f"**Output of Transformer Layer {layer}:** Shape {tuple(output_layer.shape)}")
         st.latex(r''' \text{Residual\_2} = \text{Residual\_1} + \text{MLP\_Output} ''')
         output_layer_df = pd.DataFrame(hidden_states_layer.detach().numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(output_layer_df.style.format("{:.4f}"))
@@ -453,10 +453,10 @@ if user_input:
         # Get the output of the selected layer
         st.write(f"**Logits Output:**")
         st.latex(r'''
-                    \text{Logits} = \text{Residual\_2} \times W_{\text{logits}}
+                    \text{Logits} = \text{Residual\_2} \times W_{\text{unemb}}
                     ''')
         unembedded_output = torch.matmul(output_layer, model.transformer.wte.weight.T)
-        st.write(f"**Logits: Shape {unembedded_output.shape}**")
+        st.write(f"**Logits: Shape {tuple(unembedded_output.shape)}**")
 
         # Convert logits to probabilities
         st.write("**Logits to Probabilities:**")
