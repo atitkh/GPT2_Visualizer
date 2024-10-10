@@ -187,8 +187,8 @@ if user_input:
 
         # Get the transformer block for the selected layer
         transformer_block = model.transformer.h[layer - 1]
-        attn = transformer_block.attn
         ln_1 = transformer_block.ln_1
+        attn = transformer_block.attn
         ln_2 = transformer_block.ln_2
         mlp = transformer_block.mlp
 
@@ -216,6 +216,22 @@ if user_input:
 
         st.write(f"**Layer-Normalized Output:** Shape {tuple(hidden_states_norm.shape)}")
         st.latex(r''' \text{Layer-Normalized Output } H_{\text{norm}} = \gamma \odot \frac{Input - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta ''')
+        # show gamma and beta values when i hover over the layer normalization
+        st.write("**Where:**")
+        ln_1_gamma = ln_1.weight.detach().numpy()
+        ln_1_beta = ln_1.bias.detach().numpy()
+        ln_1_gamma_df = pd.DataFrame(ln_1_gamma, columns=["Gamma"])
+        ln_1_beta_df = pd.DataFrame(ln_1_beta, columns=["Beta"])
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**γ (Scaling Factor):**")
+            st.dataframe(ln_1_gamma_df.style.format("{:.4f}"), height=100)
+
+        with col2:
+            st.write(f"**β (Shift):**")
+            st.dataframe(ln_1_beta_df.style.format("{:.4f}"), height=100)
+            
         hidden_states_norm_df = pd.DataFrame(hidden_states_norm.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(hidden_states_norm_df.style.format("{:.4f}"))
 
@@ -245,22 +261,61 @@ if user_input:
             K_head = K[:, selected_head, :]
             V_head = V[:, selected_head, :]
 
-        # Display Q, K, V for the selected head
-        st.write(f"**Queries (Q) for Layer {layer}, Head {head}:** Shape {tuple(Q_head.shape)}")
-        st.latex(r'''Q = H_{\text{norm}} \times W_Q + b_Q''')
+        # Display Q, K, V for the selected head with weight and bias
+        st.write("**Here:**")
+        col1, col2, col3 = st.columns(3)
 
+        with col1:
+            st.latex(r'W_q')
+            W_q_df = pd.DataFrame(
+                W[:, :head_dim].detach().numpy(),
+                columns=[f"Dim {i+1}" for i in range(head_dim)]
+            )
+            st.dataframe(W_q_df.style.format("{:.4f}"), height=200, width=400)
+
+            st.latex(r'b_q')
+            b_q_df = pd.DataFrame(b[:head_dim].detach().numpy(), columns=["Bias"])
+            st.dataframe(b_q_df.style.format("{:.4f}"), height=100)
+
+        with col2:
+            st.latex(r'W_k')
+            W_k_df = pd.DataFrame(
+                W[:, head_dim:2*head_dim].detach().numpy(),
+                columns=[f"Dim {i+1}" for i in range(head_dim)]
+            )
+            st.dataframe(W_k_df.style.format("{:.4f}"), height=200, width=400)
+
+            st.latex(r'b_k')
+            b_k_df = pd.DataFrame(b[head_dim:2*head_dim].detach().numpy(), columns=["Bias"])
+            st.dataframe(b_k_df.style.format("{:.4f}"), height=100)
+
+        with col3:
+            st.latex(r'W_v')
+            W_v_df = pd.DataFrame(
+                W[:, 2*head_dim:3*head_dim].detach().numpy(),
+                columns=[f"Dim {i+1}" for i in range(head_dim)]
+            )
+            st.dataframe(W_v_df.style.format("{:.4f}"), height=200, width=400)
+
+            st.latex(r'b_v')
+            b_v_df = pd.DataFrame(b[2*head_dim:3*head_dim].detach().numpy(), columns=["Bias"])
+            st.dataframe(b_v_df.style.format("{:.4f}"), height=100)
+
+        st.write(f"**Queries (Q)**")
+        st.latex(r'''Q = H_{\text{norm}} \times W_Q + b_Q''')
+        st.write(f"**Queries (Q) for Layer {layer}, Head {head}:** Shape {tuple(Q_head.shape)}")
         Q_df = pd.DataFrame(Q_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(Q_df.style.format("{:.4f}"))
 
-        st.write(f"**Keys (K) for Layer {layer}, Head {head}:** Shape {tuple(K_head.shape)}")
+        st.write(f"**Keys (K)")
         st.latex(r'''K = H_{\text{norm}} \times W_K + b_K''')
-
+        st.write(f"**Keys (K) for Layer {layer}, Head {head}:** Shape {tuple(K_head.shape)}")
         K_df = pd.DataFrame(K_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(K_df.style.format("{:.4f}"))
 
-        st.write(f"**Values (V) for Layer {layer}, Head {head}:** Shape {tuple(V_head.shape)}")
+        st.write(f"**Values (V)")
         st.latex(r'''V = H_{\text{norm}} \times W_V + b_V''')
-
+        st.write(f"**Values (V) for Layer {layer}, Head {head}:** Shape {tuple(V_head.shape)}")
         V_df = pd.DataFrame(V_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(V_df.style.format("{:.4f}"))
 
@@ -292,7 +347,7 @@ if user_input:
         st.dataframe(attention_scores_masked_df.style.format("{:.4f}"))
 
         st.write(f"**Attention Weights for Layer {layer}, Head {head}:** Shape {tuple(attention_weights.shape)}")
-        st.latex(r'''\text{Attention\_Weights} = \text{softmax}(\text{Masked\_Attention\_Scores})''')
+        st.latex(r'''\text{Attention\_Weights}_{i,j} = \frac{\exp(\text{Masked\_Attention\_Scores}_{i,j})}{\sum_{k=1}^{n} \exp(\text{Masked\_Attention\_Scores}_{i,k})}''')
         attention_weights_df = pd.DataFrame(attention_weights.numpy(), index=token_labels, columns=token_labels)
         st.dataframe(attention_weights_df.style.format("{:.4f}"))
 
@@ -374,8 +429,22 @@ if user_input:
         st.latex(r''' \text{Attention\_Output\_Concat} = \text{Concatenate}(\text{Attention\_Output\_Head}_1, \ldots, \text{Attention\_Output\_Head}_{\text{num\_heads}}) ''')
         attention_output_concat_df = pd.DataFrame(attention_output_concat.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(attention_output_concat_df.style.format("{:.4f}"))
-        st.write(f"**Attention Output After Projection:** Shape {tuple(attn_output.shape)}")
+
+        st.write(f"**Linear Projection**")
         st.latex(r''' \text{Attention\_Output} = \text{Attention\_Output\_Concat} \times W_{\text{c\_proj\_1}} + b_{\text{c\_proj\_1}} ''')
+        
+        st.write(f"**Where:**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.latex(r'''W_{\text{c\_proj\_1}}''')
+            st.write(f"**Weight is not visualizable due to its large size of {tuple(attn.c_proj.weight.shape)}**")
+
+        with col2:
+            st.latex(r'''b_{\text{c\_proj\_1}}''')
+            b_c_proj_1_df = pd.DataFrame(attn.c_proj.bias.detach().numpy(), columns=["Bias"])
+            st.dataframe(b_c_proj_1_df.style.format("{:.4f}"), height=100)
+
+        st.write(f"**Attention Output After Projection:** Shape {tuple(attn_output.shape)}")
         attn_output_df = pd.DataFrame(attn_output.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(attn_output_df.style.format("{:.4f}"))
 
@@ -401,8 +470,22 @@ if user_input:
             # Layer normalization
             hidden_states_norm_2 = ln_2(residual_1.unsqueeze(0))[0]  # Shape: (seq_len, hidden_size)
 
+        st.latex(r'''\text{Layer-Normalized Output }H_{\text{norm}} = \gamma \odot \frac{\text{Residual\_1} - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta ''')
+        st.write("Where:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**γ (Scaling Factor):**")
+            ln_2_gamma = ln_2.weight.detach().numpy()
+            ln_2_gamma_df = pd.DataFrame(ln_2_gamma, columns=["Gamma"])
+            st.dataframe(ln_2_gamma_df.style.format("{:.4f}"), height=100)
+
+        with col2:
+            st.write(f"**β (Shift):**")
+            ln_2_beta = ln_2.bias.detach().numpy()
+            ln_2_beta_df = pd.DataFrame(ln_2_beta, columns=["Beta"])
+            st.dataframe(ln_2_beta_df.style.format("{:.4f}"), height=100)
+
         st.write(f"**Layer-Normalized Output Before MLP:** Shape {tuple(hidden_states_norm_2.shape)}")
-        st.latex(r''' Layer-Normalized Output H_{\text{norm}} = \gamma \odot \frac{\text{Residual\_1} - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta ''')
         hidden_states_norm_2_df = pd.DataFrame(hidden_states_norm_2.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(hidden_states_norm_2_df.style.format("{:.4f}"))
 
@@ -418,8 +501,20 @@ if user_input:
             # MLP output
             mlp_output = mlp(hidden_states_norm_2.unsqueeze(0))[0]  # Shape: (seq_len, hidden_size)
 
-        st.write(f"**First Linear Layer Output:** Shape {tuple(first_linear.shape)}")
         st.latex(r''' \text{First\_Linear} = H_{\text{norm}} \times W_{\text{c\_fc}} + b_{\text{c\_fc}} ''')
+        st.write("Where:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.latex(r'''W_{\text{c\_fc}}''')
+            st.write(f"**Weight is not visualizable due to its large size of {tuple(mlp.c_fc.weight.shape)}**")
+
+        with col2:
+            st.latex(r'''b_{\text{c\_fc}}''')
+            b_c_fc = mlp.c_fc.bias.detach().numpy()
+            b_c_fc_df = pd.DataFrame(b_c_fc, columns=["Bias"])
+            st.dataframe(b_c_fc_df.style.format("{:.4f}"), height=100)
+
+        st.write(f"**First Linear Layer Output:** Shape {tuple(first_linear.shape)}")
         first_linear_df = pd.DataFrame(first_linear.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(4 * hidden_size)])
         st.dataframe(first_linear_df.style.format("{:.4f}"))
 
@@ -430,6 +525,18 @@ if user_input:
 
         st.write(f"**MLP Output:** Shape {tuple(mlp_output.shape)}")
         st.latex(r''' \text{MLP\_Output} = GELU_{\text{fl}} \times W_{\text{c\_proj\_2}} + b_{\text{c\_proj\_2}} ''')
+        st.write("Where:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.latex(r'''W_{\text{c\_proj\_2}}''')
+            st.write(f"**Weight is not visualizable due to its large size of {tuple(mlp.c_proj.weight.shape)}**")
+
+        with col2:
+            st.latex(r'''b_{\text{c\_proj\_2}}''')
+            b_c_proj_2 = mlp.c_proj.bias.detach().numpy()
+            b_c_proj_2_df = pd.DataFrame(b_c_proj_2, columns=["Bias"])
+            st.dataframe(b_c_proj_2_df.style.format("{:.4f}"), height=100)
+
         mlp_output_df = pd.DataFrame(mlp_output.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(hidden_size)])
         st.dataframe(mlp_output_df.style.format("{:.4f}"))
 
@@ -447,7 +554,7 @@ if user_input:
         st.dataframe(output_layer_df.style.format("{:.4f}"))
 
     with st.expander("View Probabilities"):
-        st.subheader("4. Text Generation")
+        st.write("# **4. Text Generation**")
 
         do_sample = st.checkbox("Use Sampling", value=False)
         # Get the output of the selected layer
@@ -455,14 +562,17 @@ if user_input:
         st.latex(r'''
                     \text{Logits} = \text{Residual\_2} \times W_{\text{unemb}}
                     ''')
+
         unembedded_output = torch.matmul(output_layer, model.transformer.wte.weight.T)
-        st.write(f"**Logits: Shape {tuple(unembedded_output.shape)}**")
+        
+        st.write(f"**Here:**")
+        st.write(f"**Weight and Output is not visualizable due to its large size of {tuple(model.transformer.wte.weight.T.shape)}**")
 
         # Convert logits to probabilities
         st.write("**Logits to Probabilities:**")
         probabilities = torch.softmax(unembedded_output, dim=-1)  # Shape: (seq_len, vocab_size)
         st.latex(r'''
-            P(\text{next token}) = \text{softmax}(\text{Logits})
+            P(\text{next token}) = \frac{\exp(\text{Logits}_i)}{\sum_{j} \exp(\text{Logits}_j)}
         ''')
 
         if do_sample:
@@ -498,12 +608,10 @@ if user_input:
         scores = generated_outputs.scores  # List of tensors, each of shape (batch_size, vocab_size)
         # The generated tokens (excluding the input tokens)
         generated_tokens = generated_sequence[input_ids.size(1):]
-    
-        st.write("Generated Test: " + generated_text)
 
         for idx, (logits, token_id) in enumerate(zip(scores, generated_tokens)):
             # logits: (batch_size, vocab_size)
-            st.write(f"**Step {idx + 1}: Predicting Token {idx + 1}**")
+            st.write(f" ### **Step {idx + 1}: Predicting Token {idx + 1}**")
 
             # Convert logits to probabilities
             probabilities = torch.softmax(logits[0], dim=0)  # logits[0] since batch_size=1
