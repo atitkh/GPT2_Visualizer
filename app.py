@@ -30,7 +30,7 @@ if tokenizer.pad_token_id is None:
     tokenizer.pad_token = tokenizer.eos_token
     model.config.pad_token_id = tokenizer.pad_token_id
 
-st.title("GPT-2 Steps Visualization")
+st.title("GPT-2 Layers Visualization")
 
 # User input
 st.write("### **:green[Input Text]**")
