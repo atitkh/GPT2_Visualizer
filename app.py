@@ -665,7 +665,7 @@ if user_input:
             st.plotly_chart(fig)
 
     st.write("### **:green[Generated Text:]**")
-    st.write(":green[", generated_text, "]")
+    st.write(f":green[{generated_text}]")
 
     st.subheader("Summary")
 
