@@ -33,8 +33,8 @@ if tokenizer.pad_token_id is None:
 st.title("GPT-2 Steps Visualization")
 
 # User input
-st.write(" ### **Input Text**")
-user_input = st.text_area("Enter your text here:", "This is a test sentence.")
+st.write("### **:green[Input Text]**")
+user_input = st.text_area(":green[Enter your text here:]", "This is a test sentence.")
 
 if user_input:
     # Tokenize input
@@ -51,6 +51,23 @@ if user_input:
             "Token ID": input_ids[0].tolist()
         })
         st.table(token_df)
+
+        # button to download all vocabularies
+        if st.button("Extract All Vocabulary"):
+            st.write("### **Vocabulary Visualization**")
+            vocab_df = pd.DataFrame({
+            "Token ID": range(tokenizer.vocab_size),
+            "Token": tokenizer.convert_ids_to_tokens(range(tokenizer.vocab_size))
+            })
+            # Save the vocabulary dataframe to a CSV file
+            if vocab_df is not None:
+                csv = vocab_df.to_csv(index=False).encode()
+                st.download_button(
+                    label="Download Vocabulary as CSV",
+                    data=csv,
+                    file_name='vocabulary.csv',
+                    mime='text/csv',
+                )
 
     with st.expander("View Embeddings"):
         st.write("# **2. Embeddings**")
@@ -155,17 +172,17 @@ if user_input:
     with st.expander("View Transformer Layer"):
         st.write("# **3. Transformer Layer Breakdown**")
 
-        st.write("""
-        In GPT-2, each transformer layer processes the input through several steps:
+        # st.write("""
+        # In GPT-2, each transformer layer processes the input through several steps:
 
-        1. **Layer Normalization**: Normalizes the input state.
-        2. **Multi-Head Self-Attention**: Computes attention weights to focus on different parts of the sequence.
-        3. **First Residual Connection**: Adds the attention output back to the input state.
-        4. **Layer Normalization**: Normalizes the result after the first residual connection.
-        5. **Feed-Forward Neural Network (MLP)**: Applies non-linear transformations to each position separately.
-        6. **Second Residual Connection**: Adds the MLP output back to the input of the MLP.
+        # 1. **Layer Normalization**: Normalizes the input state.
+        # 2. **Multi-Head Self-Attention**: Computes attention weights to focus on different parts of the sequence.
+        # 3. **First Residual Connection**: Adds the attention output back to the input state.
+        # 4. **Layer Normalization**: Normalizes the result after the first residual connection.
+        # 5. **Feed-Forward Neural Network (MLP)**: Applies non-linear transformations to each position separately.
+        # 6. **Second Residual Connection**: Adds the MLP output back to the input of the MLP.
 
-        """)
+        # """)
 
         # Get outputs with hidden states and attentions
         outputs = model(**inputs, output_attentions=True, output_hidden_states=True)
@@ -437,7 +454,7 @@ if user_input:
         col1, col2 = st.columns(2)
         with col1:
             st.latex(r'''W_{\text{c\_proj\_1}}''')
-            st.write(f"**Weight is not visualizable due to its large size of {tuple(attn.c_proj.weight.shape)}**")
+            st.write(f":red[**Weight is not visualizable due to its large size of {tuple(attn.c_proj.weight.shape)}**]")
 
         with col2:
             st.latex(r'''b_{\text{c\_proj\_1}}''')
@@ -506,7 +523,7 @@ if user_input:
         col1, col2 = st.columns(2)
         with col1:
             st.latex(r'''W_{\text{c\_fc}}''')
-            st.write(f"**Weight is not visualizable due to its large size of {tuple(mlp.c_fc.weight.shape)}**")
+            st.write(f":red[**Weight is not visualizable due to its large size of {tuple(mlp.c_fc.weight.shape)}**]")
 
         with col2:
             st.latex(r'''b_{\text{c\_fc}}''')
@@ -529,7 +546,7 @@ if user_input:
         col1, col2 = st.columns(2)
         with col1:
             st.latex(r'''W_{\text{c\_proj\_2}}''')
-            st.write(f"**Weight is not visualizable due to its large size of {tuple(mlp.c_proj.weight.shape)}**")
+            st.write(f":red[**Weight is not visualizable due to its large size of {tuple(mlp.c_proj.weight.shape)}**]")
 
         with col2:
             st.latex(r'''b_{\text{c\_proj\_2}}''')
@@ -566,7 +583,7 @@ if user_input:
         unembedded_output = torch.matmul(output_layer, model.transformer.wte.weight.T)
         
         st.write(f"**Here:**")
-        st.write(f"**Weight and Output is not visualizable due to its large size of {tuple(model.transformer.wte.weight.T.shape)}**")
+        st.write(f":red[**Weight and Output is not visualizable due to its large size of {tuple(model.transformer.wte.weight.T.shape)}**]")
 
         # Convert logits to probabilities
         st.write("**Logits to Probabilities:**")
@@ -576,8 +593,8 @@ if user_input:
         ''')
 
         if do_sample:
-            temperature = st.slider("Temperature", 0.0, 1.5, 0.7)
-            top_k = st.slider("Top-k", 0, 100, 50)
+            temperature = st.slider("Temperature", 0.0, 1.5, 1.0)
+            top_k = st.slider("Top-k", 0, 100, 10)
             top_p = st.slider("Top-p", 0.0, 1.0, 0.90)
         else:
             temperature = 1.0
@@ -647,8 +664,8 @@ if user_input:
 
             st.plotly_chart(fig)
 
-    st.write("### **Generated Text:**")
-    st.write(generated_text)
+    st.write("### **:green[Generated Text:]**")
+    st.write(":green[", generated_text, "]")
 
     st.subheader("Summary")
 
@@ -678,6 +695,12 @@ if user_input:
     pipeline_data.append({
         "Step": "Transformer Layers",
         "Value": f"Processed through {len(attentions)} layers"
+    })
+
+    # Probabilities
+    pipeline_data.append({
+        "Step": "Probabilities",
+        "Value": f"Generated with Temperature={temperature}, Top-k={top_k}, Top-p={top_p}"
     })
 
     # Generated Text
