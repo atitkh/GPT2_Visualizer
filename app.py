@@ -573,7 +573,7 @@ if user_input:
     with st.expander("View Probabilities"):
         st.write("# **4. Text Generation**")
 
-        do_sample = st.checkbox("Use Sampling", value=False)
+        do_sample = st.checkbox("Use Sampling", value=True)
         # Get the output of the selected layer
         st.write(f"**Logits Output:**")
         st.latex(r'''
