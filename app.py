@@ -307,13 +307,13 @@ if user_input:
         Q_df = pd.DataFrame(Q_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(Q_df.style.format("{:.4f}"))
 
-        st.write(f"**Keys (K)")
+        st.write(f"**Keys (K)**")
         st.latex(r'''K = H_{\text{norm}} \times W_K + b_K''')
         st.write(f"**Keys (K) for Layer {layer}, Head {head}:** Shape {tuple(K_head.shape)}")
         K_df = pd.DataFrame(K_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
         st.dataframe(K_df.style.format("{:.4f}"))
 
-        st.write(f"**Values (V)")
+        st.write(f"**Values (V)**")
         st.latex(r'''V = H_{\text{norm}} \times W_V + b_V''')
         st.write(f"**Values (V) for Layer {layer}, Head {head}:** Shape {tuple(V_head.shape)}")
         V_df = pd.DataFrame(V_head.numpy(), index=token_labels, columns=[f"Dim {i+1}" for i in range(head_dim)])
