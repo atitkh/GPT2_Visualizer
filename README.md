@@ -1,6 +1,6 @@
 # GPT-2 Layers Visualization
 
-![GPT-2 Visualization](assets/intro.png) <!-- Optional: Add a project logo or screenshot -->
+![GPT-2 Visualization](assets/introduction.png)
 
 ## Introduction
 
